@@ -282,7 +282,7 @@ footer{text-align:center;padding:28px;color:#886e55;font-size:13px}
 const categories = {
   "اللحوم":[
     ["حميس حاشي",60],
-    ["حاشي مضغوط",60]
+    ["حاشي مضغوط",50]
   ],
   "الدجاج":[
     ["حبة شواية",44],
@@ -532,7 +532,10 @@ $("checkout").onclick=()=>{
     "الملاحظات: "+($("notes").value.trim()||"لا يوجد")
   ].join("\n");
 
-  window.location.href="https://wa.me/966583764444?text="+encodeURIComponent(message);
+  const whatsappUrl="https://wa.me/966583764444?text="+encodeURIComponent(message);
+  window.open(whatsappUrl,"_blank");
+  Object.keys(cart).forEach(id=>delete cart[id]);
+  renderCart();
 };
 
 renderTabs();
