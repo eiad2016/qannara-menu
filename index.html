@@ -1,2 +1,543 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>قنّارة | المنيو الإلكتروني</title><style>*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial;background:#fff8ef;color:#362316}header{background:linear-gradient(125deg,#803707,#df790c);color:white;text-align:center;padding:34px 12px}header h1{font-size:48px;margin:6px}main{max-width:1050px;margin:auto;padding:15px}.tabs{display:flex;gap:8px;overflow-x:auto;position:sticky;top:0;background:#fff8ef;padding:12px 0;z-index:2}button{border:0;background:#b95e00;color:white;padding:11px 14px;border-radius:10px;font-weight:bold;cursor:pointer;font-family:inherit}.tabs button{white-space:nowrap;background:#eedcc9;color:#60360f}.tabs button.on{background:#b95e00;color:white}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.card,.panel{background:#fff;border-radius:16px;padding:17px;box-shadow:0 3px 18px #5b2b0910}.card{display:flex;flex-direction:column;gap:10px;min-height:140px}.card h3{font-size:16px;margin:0}.price{font-size:19px;color:#ad5200;font-weight:bold}.card button{margin-top:auto}.panel{margin-top:22px}h2{border-right:5px solid #d37609;padding-right:10px}input,select,textarea{font:inherit;width:100%;border:1px solid #dcc9b4;padding:12px;border-radius:10px;background:white}label{display:block;font-weight:bold;margin:14px 0 6px}textarea{min-height:75px}.line{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #eee;padding:12px 0}.controls{display:flex;align-items:center;gap:8px}.controls button{padding:6px 11px}.total{font-weight:bold;line-height:2.1;padding:12px 0}.send{background:#13844b;width:100%;font-size:19px}.hint{font-size:12px;color:#796653;line-height:1.7}.foot{text-align:center;color:#7a6958;padding:25px}@media(max-width:480px){.grid{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.card h3{font-size:14px}header h1{font-size:40px}}</style></head><body><header><div>مطاعم ومطابخ</div><h1>قنّارة</h1><div>المنيو الإلكتروني • اطلب عبر واتساب</div></header><main><div id="tabs" class="tabs"></div><h2 id="heading"></h2><div id="menu" class="grid"></div><section class="panel" id="basket"><h2>🛒 سلة الطلب</h2><div id="items">السلة فارغة</div><label>اسم العميل *</label><input id="name" placeholder="الاسم"><label>رقم الجوال *</label><input id="phone" type="tel" placeholder="05xxxxxxxx"><label>طريقة الاستلام</label><select id="mode"><option value="delivery">توصيل</option><option value="pickup">استلام من المطعم</option></select><div id="delivery"><label>الحي *</label><select id="district"><option value="">اختر الحي</option></select><label>تفاصيل العنوان *</label><textarea id="address" placeholder="الشارع، رقم المنزل، علامة مميزة"></textarea></div><label>ملاحظات</label><textarea id="notes" placeholder="ملاحظات على الطلب"></textarea><div id="totals" class="total"></div><button class="send" id="submit">متابعة الطلب على واتساب</button><p class="hint">سيُفتح واتساب برسالة الطلب، ويجب عليك الضغط على إرسال بنفسك. الأسعار والأصناف المعروضة نموذج أولي ويجب مراجعتها من المطعم قبل مشاركة الرابط مع العملاء. توفر الأصناف يحتاج نظام إدارة متصلًا بقاعدة بيانات.</p></section></main><div class="foot">مطاعم ومطابخ قنّارة • 0583764444</div><script>
-const categories={'اللحوم':[['حميس حاشي',60],['حاشي مضغوط',60]],'الدجاج':[['حبة شواية',44],['نصف حبة شواية',22],['حبة مندي',44],['نصف حبة مندي',22],['حبة مظبي',44],['نصف حبة مظبي',22],['حبة مدفون',44],['نصف حبة مدفون',22],['نفر رز حائلي',10]],'الإيدامات':[['ملوخية',8],['بامية',8],['مشكل خضار',8],['جريش',8],['قرصان',8]],'السلطات والمشروبات':[['سلطة خضراء',3],['طحينة',3],['شطة',3],['بيبسي',3]],'الحلا':[['كنافة',8]]};const districts={'الروضة':2,'الفيحاء':2,'الصناعية':2,'المعارض':2,'الشروق':5,'الطوالة':5,'الباطن':5,'أبو موسى':10};const all=Object.entries(categories).flatMap(([c,arr])=>arr.map(([name,price],i)=>({id:c+i,name,price,category:c})));let selected=Object.keys(categories)[0],cart={};const E=id=>document.getElementById(id),fmt=n=>n+' ريال';function tabs(){E('tabs').innerHTML=Object.keys(categories).map(c=>'<button class="'+(c===selected?'on':'')+'" data-c="'+c+'">'+c+'</button>').join('');E('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{selected=b.dataset.c;tabs();menu()})}function menu(){E('heading').textContent=selected;E('menu').innerHTML=all.filter(p=>p.category===selected).map(p=>'<article class="card"><h3>'+p.name+'</h3><div class="price">'+fmt(p.price)+'</div><button data-id="'+p.id+'">+ أضف للسلة</button></article>').join('');E('menu').querySelectorAll('button').forEach(b=>b.onclick=()=>{cart[b.dataset.id]=(cart[b.dataset.id]||0)+1;draw()})}const subtotal=()=>Object.entries(cart).reduce((s,[id,q])=>s+all.find(p=>p.id===id).price*q,0),fee=()=>E('mode').value==='pickup'?0:(districts[E('district').value]||0);function draw(){E('items').innerHTML=Object.keys(cart).length?Object.entries(cart).map(([id,q])=>{let p=all.find(x=>x.id===id);return '<div class="line"><div>'+p.name+'<div class="hint">'+fmt(p.price*q)+'</div></div><div class="controls"><button data-minus="'+id+'">−</button>'+q+'<button data-plus="'+id+'">+</button></div></div>'}).join(''):'السلة فارغة';E('items').querySelectorAll('[data-minus]').forEach(b=>b.onclick=()=>change(b.dataset.minus,-1));E('items').querySelectorAll('[data-plus]').forEach(b=>b.onclick=()=>change(b.dataset.plus,1));E('totals').innerHTML='الأصناف: '+fmt(subtotal())+'<br>التوصيل: '+fmt(fee())+'<br>الإجمالي: '+fmt(subtotal()+fee())}function change(id,d){cart[id]=(cart[id]||0)+d;if(cart[id]<=0)delete cart[id];draw()}E('district').innerHTML+='<option value="">اختر الحي</option>'+Object.entries(districts).map(([n,v])=>'<option value="'+n+'">'+n+' – '+fmt(v)+'</option>').join('');E('district').querySelectorAll('option')[1]?.remove();E('district').onchange=draw;E('mode').onchange=()=>{E('delivery').hidden=E('mode').value==='pickup';draw()};E('submit').onclick=()=>{if(!Object.keys(cart).length)return alert('أضف صنفًا أولًا');let name=E('name').value.trim(),phone=E('phone').value.trim(),delivery=E('mode').value==='delivery';if(!name||!/^\+?[0-9\s-]{9,16}$/.test(phone))return alert('اكتب الاسم ورقم جوال صحيح');if(delivery&&(!E('district').value||!E('address').value.trim()))return alert('حدد الحي واكتب العنوان');let lines=Object.entries(cart).map(([id,q])=>{let p=all.find(x=>x.id===id);return '• '+p.name+' × '+q+' = '+fmt(p.price*q)});let msg=['طلب جديد - قنّارة','الاسم: '+name,'الجوال: '+phone,'',...lines,'','قيمة الأصناف: '+fmt(subtotal()),'الاستلام: '+(delivery?'توصيل':'من المطعم'),...(delivery?['الحي: '+E('district').value,'العنوان: '+E('address').value,'رسوم التوصيل: '+fmt(fee())]:[]),'الإجمالي: '+fmt(subtotal()+fee()),'ملاحظات: '+(E('notes').value||'لا يوجد')].join('\n');location.href='https://wa.me/966583764444?text='+encodeURIComponent(msg)};tabs();menu();draw();</script></body></html>
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#a84e12">
+<title>قنّارة | المنيو الإلكتروني</title>
+<style>
+:root{
+  --brown:#3c2416;
+  --orange:#bd5b12;
+  --gold:#e8a64e;
+  --cream:#fff8ed;
+  --border:#eadac6;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:Tahoma,Arial,sans-serif;
+  color:var(--brown);
+  background:
+    radial-gradient(circle at 0 10%,#f9dfb8 0,transparent 34%),
+    radial-gradient(circle at 100% 60%,#fbe8cb 0,transparent 32%),
+    linear-gradient(160deg,#fffaf3,#f7eddf);
+  min-height:100vh;
+}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+header{
+  background:linear-gradient(120deg,#66300f,#ae4c08 52%,#e58a19);
+  color:white;
+  padding:22px 18px 28px;
+  position:relative;
+  overflow:hidden;
+}
+header:after{
+  content:"";
+  position:absolute;
+  width:260px;height:260px;
+  border:50px solid #ffffff0c;
+  border-radius:50%;
+  left:-100px;top:-140px;
+}
+.topbar,.hero,.container{max-width:1100px;margin:auto}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{font-size:22px;font-weight:900}
+.topbar span{font-size:12px;color:#ffe7c7}
+.hero{padding:25px 0 4px}
+.hero h1{font-size:clamp(28px,5vw,48px);margin:0 0 10px}
+.hero p{font-size:14px;color:#ffe8cc;margin:0;line-height:1.9}
+.container{padding:22px 14px 100px}
+.intro{
+  display:flex;justify-content:space-between;
+  align-items:center;gap:10px;flex-wrap:wrap;
+  margin-bottom:16px;
+}
+.intro h2{margin:0;font-size:22px}
+.intro small{color:#866b54}
+.tabs{
+  display:flex;gap:9px;overflow-x:auto;
+  padding:10px 0 18px;
+  scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{
+  border:1px solid #ead6be;
+  background:#fff;
+  color:#70421f;
+  border-radius:30px;
+  padding:11px 17px;
+  white-space:nowrap;
+  font-weight:bold;
+}
+.tabs button.active{
+  background:var(--orange);
+  color:white;border-color:var(--orange);
+}
+.section-title{
+  font-size:21px;
+  border-right:4px solid var(--orange);
+  padding-right:12px;
+  margin:8px 0 20px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.product{
+  background:#fff;
+  border:1px solid #f0e5d8;
+  border-radius:19px;
+  overflow:hidden;
+  box-shadow:0 8px 24px #67320c0b;
+  display:flex;
+  flex-direction:column;
+}
+.product-top{
+  height:105px;
+  background:linear-gradient(135deg,#fff1d9,#f4d9b3);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:42px;
+}
+.product-body{padding:15px;display:flex;flex:1;flex-direction:column;gap:12px}
+.product h3{margin:0;font-size:16px}
+.product .price{color:#a94a07;font-size:19px;font-weight:900}
+.add{
+  border:0;
+  border-radius:11px;
+  background:var(--orange);
+  color:white;
+  padding:11px;
+  font-weight:bold;
+  margin-top:auto;
+}
+.panel{
+  margin-top:28px;
+  background:white;
+  border:1px solid #eee1d1;
+  border-radius:22px;
+  padding:22px;
+  box-shadow:0 10px 35px #62340e0c;
+}
+.panel h2{margin:0 0 18px}
+.empty{
+  padding:24px;
+  text-align:center;
+  color:#907b67;
+  background:#fffaf4;
+  border-radius:12px;
+}
+.cart-line{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px;padding:14px 0;border-bottom:1px solid #eee;
+}
+.cart-line strong{display:block;margin-bottom:5px}
+.cart-line small{color:#a35b20}
+.qty{display:flex;align-items:center;gap:12px}
+.qty button{
+  width:32px;height:32px;border:0;border-radius:9px;
+  background:#f4e4d0;color:#773e16;font-weight:bold;
+}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{margin-top:15px}
+label{display:block;font-weight:bold;font-size:14px;margin-bottom:8px}
+input,select,textarea{
+  width:100%;padding:13px;border-radius:11px;
+  border:1px solid #ddcbb7;background:#fff;
+  color:#39281c;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--orange)}
+textarea{min-height:85px;resize:vertical}
+.summary{
+  background:#fff7eb;
+  border:1px solid #f0d9b8;
+  border-radius:14px;
+  padding:16px;margin:22px 0;
+}
+.summary-row{display:flex;justify-content:space-between;margin:10px 0}
+.summary-row.final{
+  border-top:1px solid #e3ccb1;
+  padding-top:14px;
+  font-size:20px;font-weight:900;color:#9f4508;
+}
+.whatsapp{
+  background:#16864b;color:white;
+  width:100%;padding:16px;border:0;
+  border-radius:13px;font-weight:bold;font-size:17px;
+}
+.note{font-size:12px;line-height:1.9;color:#806e5d;margin-top:15px}
+footer{text-align:center;padding:28px;color:#886e55;font-size:13px}
+.floating{
+  position:fixed;bottom:16px;left:16px;
+  background:#a94d0c;color:#fff;border:0;
+  border-radius:50px;padding:13px 20px;
+  box-shadow:0 6px 20px #4b260c44;
+  z-index:10;font-weight:bold;
+}
+@media(max-width:700px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .product-top{height:80px;font-size:34px}
+  .product-body{padding:11px}
+  .product h3{font-size:14px}
+  .product .price{font-size:16px}
+  .form-grid{grid-template-columns:1fr;gap:0}
+  .panel{padding:15px}
+  .hero{padding-top:20px}
+}
+@media(max-width:350px){
+  .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="topbar">
+    <div class="brand">قنّارة</div>
+    <span>مطاعم ومطابخ قنّارة</span>
+  </div>
+  <div class="hero">
+    <h1>الطعم الأصيل يبدأ هنا.</h1>
+    <p>اختر وجبتك المفضلة، أضفها للسلة، وأرسل طلبك مباشرة عبر واتساب.</p>
+  </div>
+</header>
+
+<main class="container">
+  <div class="intro">
+    <h2>قائمة الطعام</h2>
+    <small>اختر القسم واستعرض الأصناف</small>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+  <h2 class="section-title" id="categoryTitle"></h2>
+  <div class="grid" id="products"></div>
+
+  <section class="panel" id="basket">
+    <h2>🛒 سلة طلبك</h2>
+    <div id="cartItems"></div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="customer">اسم العميل *</label>
+        <input id="customer" placeholder="اكتب اسمك">
+      </div>
+      <div class="field">
+        <label for="phone">رقم الجوال *</label>
+        <input id="phone" type="tel" inputmode="tel" placeholder="05xxxxxxxx">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="method">طريقة استلام الطلب</label>
+      <select id="method">
+        <option value="delivery">توصيل إلى المنزل</option>
+        <option value="pickup">استلام من المطعم</option>
+      </select>
+    </div>
+
+    <div id="deliveryFields">
+      <div class="field">
+        <label for="district">اختر الحي *</label>
+        <select id="district">
+          <option value="">اختر الحي</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="address">تفاصيل العنوان *</label>
+        <textarea id="address" placeholder="الشارع، رقم المنزل، أقرب معلم"></textarea>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="notes">ملاحظات إضافية</label>
+      <textarea id="notes" placeholder="أي ملاحظات على الوجبة أو الطلب"></textarea>
+    </div>
+
+    <div class="summary">
+      <div class="summary-row">
+        <span>قيمة الأصناف</span><span id="subtotal">0 ريال</span>
+      </div>
+      <div class="summary-row">
+        <span>رسوم التوصيل</span><span id="deliveryFee">0 ريال</span>
+      </div>
+      <div class="summary-row final">
+        <span>الإجمالي</span><span id="grandTotal">0 ريال</span>
+      </div>
+    </div>
+
+    <button class="whatsapp" id="checkout">إرسال الطلب عبر واتساب ←</button>
+    <p class="note">سيُفتح واتساب برسالة تحتوي تفاصيل الطلب، ويجب عليك الضغط على إرسال لتأكيدها. يرجى التأكد من الأسعار وتوفر الأصناف مع المطعم.</p>
+  </section>
+</main>
+
+<button class="floating" id="cartShortcut">🛒 السلة <span id="cartCount">0</span></button>
+<footer>مطاعم ومطابخ قنّارة • 0583764444</footer>
+
+<script>
+const categories = {
+  "اللحوم":[
+    ["حميس حاشي",60],
+    ["حاشي مضغوط",60]
+  ],
+  "الدجاج":[
+    ["حبة شواية",44],
+    ["نصف حبة شواية",22],
+    ["حبة مندي",44],
+    ["نصف مندي",22],
+    ["حبة مظبي",44],
+    ["نصف حبة مظبي",22],
+    ["حبة مدفون",44],
+    ["نصف مدفون",22],
+    ["نفر رز حبة حائلي",10]
+  ],
+  "الإيدامات":[
+    ["ملوخية",8],
+    ["بامية",8],
+    ["مشكل خضار",8],
+    ["جريش",8],
+    ["قرصان",8]
+  ],
+  "السلطات والمشروبات":[
+    ["سلطة خضراء",3],
+    ["طحينة",3],
+    ["شطة",3],
+    ["بيبسي",3]
+  ],
+  "الحلا":[
+    ["كنافة",8]
+  ]
+};
+
+const districts = {
+  "الروضة":2,
+  "الفيحاء":2,
+  "الصناعية":2,
+  "المعارض":2,
+  "الشروق":5,
+  "الطوالة":5,
+  "الباطن":5,
+  "أبو موسى":10
+};
+
+const emojis = {
+  "اللحوم":"🥩",
+  "الدجاج":"🍗",
+  "الإيدامات":"🍲",
+  "السلطات والمشروبات":"🥗",
+  "الحلا":"🍮"
+};
+
+const products = [];
+Object.entries(categories).forEach(([category,items])=>{
+  items.forEach(([name,price],index)=>{
+    products.push({
+      id:category+"-"+index,
+      category,name,price
+    });
+  });
+});
+
+const $ = id=>document.getElementById(id);
+const money = n=>n+" ريال";
+const cart = {};
+let selectedCategory = Object.keys(categories)[0];
+
+function renderTabs(){
+  $("tabs").innerHTML="";
+  Object.keys(categories).forEach(category=>{
+    const btn=document.createElement("button");
+    btn.textContent=category;
+    btn.className=category===selectedCategory?"active":"";
+    btn.onclick=()=>{
+      selectedCategory=category;
+      renderTabs();
+      renderProducts();
+    };
+    $("tabs").appendChild(btn);
+  });
+}
+
+function renderProducts(){
+  $("categoryTitle").textContent=selectedCategory;
+  $("products").innerHTML="";
+  products.filter(p=>p.category===selectedCategory).forEach(p=>{
+    const card=document.createElement("article");
+    card.className="product";
+
+    const top=document.createElement("div");
+    top.className="product-top";
+    top.textContent=emojis[p.category]||"🍽️";
+
+    const body=document.createElement("div");
+    body.className="product-body";
+
+    const title=document.createElement("h3");
+    title.textContent=p.name;
+
+    const price=document.createElement("div");
+    price.className="price";
+    price.textContent=money(p.price);
+
+    const button=document.createElement("button");
+    button.className="add";
+    button.textContent="+ أضف للسلة";
+    button.onclick=()=>{
+      cart[p.id]=(cart[p.id]||0)+1;
+      renderCart();
+    };
+
+    body.append(title,price,button);
+    card.append(top,body);
+    $("products").appendChild(card);
+  });
+}
+
+function subtotal(){
+  return Object.entries(cart).reduce((sum,[id,quantity])=>{
+    const product=products.find(p=>p.id===id);
+    return sum+(product?product.price*quantity:0);
+  },0);
+}
+
+function deliveryFee(){
+  if($("method").value==="pickup")return 0;
+  return districts[$("district").value]||0;
+}
+
+function changeQuantity(id,amount){
+  cart[id]=(cart[id]||0)+amount;
+  if(cart[id]<=0)delete cart[id];
+  renderCart();
+}
+
+function renderCart(){
+  const container=$("cartItems");
+  container.innerHTML="";
+  const entries=Object.entries(cart);
+
+  if(!entries.length){
+    const empty=document.createElement("div");
+    empty.className="empty";
+    empty.textContent="السلة فارغة حاليًا، اختر وجبتك أولًا.";
+    container.appendChild(empty);
+  }
+
+  entries.forEach(([id,quantity])=>{
+    const product=products.find(p=>p.id===id);
+    if(!product)return;
+
+    const row=document.createElement("div");
+    row.className="cart-line";
+
+    const info=document.createElement("div");
+    const name=document.createElement("strong");
+    name.textContent=product.name;
+    const price=document.createElement("small");
+    price.textContent=money(product.price*quantity);
+    info.append(name,price);
+
+    const controls=document.createElement("div");
+    controls.className="qty";
+
+    const minus=document.createElement("button");
+    minus.textContent="−";
+    minus.onclick=()=>changeQuantity(id,-1);
+
+    const count=document.createElement("span");
+    count.textContent=quantity;
+
+    const plus=document.createElement("button");
+    plus.textContent="+";
+    plus.onclick=()=>changeQuantity(id,1);
+
+    controls.append(minus,count,plus);
+    row.append(info,controls);
+    container.appendChild(row);
+  });
+
+  $("subtotal").textContent=money(subtotal());
+  $("deliveryFee").textContent=money(deliveryFee());
+  $("grandTotal").textContent=money(subtotal()+deliveryFee());
+  $("cartCount").textContent=entries.reduce((sum,[id,q])=>sum+q,0);
+}
+
+Object.entries(districts).forEach(([name,fee])=>{
+  const option=document.createElement("option");
+  option.value=name;
+  option.textContent=name+" — "+money(fee);
+  $("district").appendChild(option);
+});
+
+$("district").onchange=renderCart;
+$("method").onchange=()=>{
+  $("deliveryFields").hidden=$("method").value==="pickup";
+  renderCart();
+};
+
+$("cartShortcut").onclick=()=>{
+  $("basket").scrollIntoView({behavior:"smooth"});
+};
+
+$("checkout").onclick=()=>{
+  const entries=Object.entries(cart);
+  if(!entries.length){
+    alert("أضف صنفًا إلى السلة أولًا");
+    return;
+  }
+
+  const name=$("customer").value.trim();
+  const phone=$("phone").value.trim();
+  const delivery=$("method").value==="delivery";
+
+  if(!name){
+    alert("يرجى إدخال اسم العميل");
+    return;
+  }
+
+  if(!/^(?:\+966|966|0)?5\d{8}$/.test(phone.replace(/[\s-]/g,""))){
+    alert("يرجى إدخال رقم جوال سعودي صحيح");
+    return;
+  }
+
+  if(delivery&&(!$("district").value||!$("address").value.trim())){
+    alert("يرجى تحديد الحي وتفاصيل العنوان");
+    return;
+  }
+
+  const lines=entries.map(([id,q])=>{
+    const p=products.find(item=>item.id===id);
+    return "• "+p.name+" × "+q+" = "+money(p.price*q);
+  });
+
+  const message=[
+    "🍽️ طلب جديد - مطاعم ومطابخ قنّارة",
+    "الاسم: "+name,
+    "الجوال: "+phone,
+    "",
+    ...lines,
+    "",
+    "قيمة الأصناف: "+money(subtotal()),
+    "طريقة الاستلام: "+(delivery?"توصيل":"استلام من المطعم"),
+    ...(delivery?[
+      "الحي: "+$("district").value,
+      "العنوان: "+$("address").value.trim(),
+      "رسوم التوصيل: "+money(deliveryFee())
+    ]:[]),
+    "الإجمالي: "+money(subtotal()+deliveryFee()),
+    "الملاحظات: "+($("notes").value.trim()||"لا يوجد")
+  ].join("\n");
+
+  window.location.href="https://wa.me/966583764444?text="+encodeURIComponent(message);
+};
+
+renderTabs();
+renderProducts();
+renderCart();
+</script>
+</body>
+</html>
