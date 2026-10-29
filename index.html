@@ -215,6 +215,7 @@ footer{text-align:center;padding:28px;color:#886e55;font-size:13px}
     <h2>قائمة الطعام</h2>
     <small>اختر القسم واستعرض الأصناف</small>
   </div>
+  <p id="menuStatus" role="status" style="padding:10px;color:#70421f">جارٍ تحميل قائمة الطعام...</p>
   <nav class="tabs" id="tabs"></nav>
   <h2 class="section-title" id="categoryTitle"></h2>
   <div class="grid" id="products"></div>
@@ -549,6 +550,8 @@ $("checkout").onclick=()=>{
   renderCart();
 };
 
+products=[];
+Object.keys(categories).forEach(k=>delete categories[k]);
 renderTabs();
 renderProducts();
 renderCart();
@@ -557,11 +560,21 @@ renderCart();
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getFirestore,collection,onSnapshot} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",authDomain:"qannara-menu.firebaseapp.com",projectId:"qannara-menu",appId:"1:655860571721:web:cb1841f875b5bb58b62998"});
+const status=document.getElementById("menuStatus");
 onSnapshot(collection(getFirestore(app),"products"),snap=>{
- if(snap.empty)return;
- products=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.visible!==false);
+ products=snap.docs.map(d=>({id:d.id,...d.data()}))
+   .filter(p=>p.visible!==false && p.name && Number.isFinite(Number(p.price)))
+   .map(p=>({...p,price:Number(p.price)}));
+ syncCategories();
+ for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id];}
+ renderTabs();renderProducts();renderCart();
+ status.textContent=products.length?"القائمة محدثة مباشرة من المطعم":"لا توجد أصناف متاحة حاليًا.";
+},e=>{
+ products=[];
  syncCategories();renderTabs();renderProducts();renderCart();
-},e=>console.warn("تعذر تحديث المنيو",e));
+ status.textContent="تعذر تحميل القائمة من قاعدة البيانات. يرجى إعادة المحاولة لاحقًا.";
+ console.error("Firestore menu error",e);
+});
 </script>
 </body>
 </html>
