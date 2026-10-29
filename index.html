@@ -561,7 +561,9 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase
 import {getFirestore,collection,onSnapshot} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",authDomain:"qannara-menu.firebaseapp.com",projectId:"qannara-menu",appId:"1:655860571721:web:cb1841f875b5bb58b62998"});
 const status=document.getElementById("menuStatus");
+const watchdog=setTimeout(()=>{if(status.textContent.includes("تحميل"))status.textContent="تأخر الاتصال بقاعدة البيانات. تحقق من اتصال الإنترنت أو صلاحيات قراءة Firestore.";},9000);
 onSnapshot(collection(getFirestore(app),"products"),snap=>{
+ clearTimeout(watchdog);
  products=snap.docs.map(d=>({id:d.id,...d.data()}))
    .filter(p=>p.visible!==false && p.name && Number.isFinite(Number(p.price)))
    .map(p=>({...p,price:Number(p.price)}));
@@ -570,6 +572,7 @@ onSnapshot(collection(getFirestore(app),"products"),snap=>{
  renderTabs();renderProducts();renderCart();
  status.textContent=products.length?"القائمة محدثة مباشرة من المطعم ("+products.length+" صنف)":"لا توجد أصناف منشورة حاليًا في قاعدة البيانات.";
 },e=>{
+ clearTimeout(watchdog);
  products=[];
  syncCategories();renderTabs();renderProducts();renderCart();
  status.textContent="تعذر تحميل القائمة من قاعدة البيانات ("+(e.code||"خطأ اتصال")+"). حاول تحديث الصفحة أو التواصل مع المطعم.";
