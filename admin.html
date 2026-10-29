@@ -73,7 +73,7 @@ small{color:#777}
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import {getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,setDoc} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import {initializeFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,setDoc,getDocsFromServer} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 const config={
 apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",
@@ -86,7 +86,7 @@ appId:"1:655860571721:web:cb1841f875b5bb58b62998"
 
 const app=initializeApp(config);
 const auth=getAuth(app);
-const db=getFirestore(app);
+const db=initializeFirestore(app,{experimentalForceLongPolling:true});
 const provider=new GoogleAuthProvider();
 const adminEmail="eiadswdan@gmail.com";
 const $=id=>document.getElementById(id);
@@ -135,6 +135,7 @@ $("userInfo").textContent="مرحبًا، "+user.email;
 unsubscribe=onSnapshot(collection(db,"products"),snap=>{
 items=snap.docs.map(d=>({id:d.id,...d.data()}));
 render();
+notify("الأصناف المستلمة: "+snap.size+" | المصدر: "+(snap.metadata.fromCache?"ذاكرة مؤقتة":"الخادم")+" | المشروع: "+app.options.projectId);
 },e=>notify("تعذر قراءة الأصناف: "+e.message));
 });
 
@@ -161,7 +162,8 @@ try{
 if(editing)await updateDoc(doc(db,"products",editing),data);
 else await addDoc(collection(db,"products"),data);
 reset();
-notify("تم حفظ الصنف بنجاح");
+const verified=await getDocsFromServer(collection(db,"products"));
+notify("تم الحفظ. تحقق الخادم: "+verified.size+" صنف في قاعدة البيانات.");
 }catch(err){notify("فشل الحفظ: "+err.message)}
 };
 
