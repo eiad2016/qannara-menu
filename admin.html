@@ -73,7 +73,7 @@ small{color:#777}
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import {initializeFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,setDoc,getDocsFromServer} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import {initializeFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,setDoc,writeBatch} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 const config={
 apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",
@@ -86,39 +86,32 @@ appId:"1:655860571721:web:cb1841f875b5bb58b62998"
 
 const app=initializeApp(config);
 const auth=getAuth(app);
-const db=initializeFirestore(app,{experimentalForceLongPolling:true});
+const db=initializeFirestore(app,{experimentalAutoDetectLongPolling:true});
 const provider=new GoogleAuthProvider();
 const adminEmail="eiadswdan@gmail.com";
 const $=id=>document.getElementById(id);
 const originals={"اللحوم":[["حميس حاشي",60],["حاشي مضغوط",50]],"الدجاج":[["حبة شواية",44],["نصف حبة شواية",22],["حبة مندي",44],["نصف مندي",22],["حبة مظبي",44],["نصف حبة مظبي",22],["حبة مدفون",44],["نصف مدفون",22],["نفر رز حبة حائلي",10]],"الإيدامات":[["ملوخية",8],["بامية",8],["مشكل خضار",8],["جريش",8],["قرصان",8]],"السلطات والمشروبات":[["سلطة خضراء",3],["طحينة",3],["شطة",3],["بيبسي",3]],"الحلا":[["كنافة",8]]};
 $("importOriginal").onclick=async()=>{
- if(!confirm("استيراد الأصناف الناقصة فقط مع التحقق من الخادم بعد كل صنف؟"))return;
+ if(!auth.currentUser || auth.currentUser.email!==adminEmail){notify("يجب تسجيل الدخول بحساب المدير أولاً.");return;}
+ if(!confirm("استيراد أصناف المنيو الأساسية إلى قاعدة البيانات؟ لن تُحذف الأصناف الموجودة."))return;
  const btn=$("importOriginal");btn.disabled=true;
- let added=0,failed=[],skipped=0;
  try{
-  const before=await getDocsFromServer(collection(db,"products"));
-  const existing=new Set(before.docs.map(d=>d.id));
-  const names=new Set(before.docs.map(d=>(d.data().name||"")+"|"+(d.data().category||"")));
-  notify("بدأ الفحص: "+before.size+" صنف موجود في الخادم.");
+  const batch=writeBatch(db);
+  let count=0;
   for(const [category,entries] of Object.entries(originals)){
    for(let n=0;n<entries.length;n++){
     const [name,price]=entries[n],id=category+"-"+n;
-    if(existing.has(id)||names.has(name+"|"+category)){skipped++;continue}
-    try{
-     await setDoc(doc(db,"products",id),{name,price,category,description:"",image:"",visible:true});
-     added++;existing.add(id);names.add(name+"|"+category);
-     notify("جارٍ الاستيراد: "+added+" أضيف، "+skipped+" موجود، "+failed.length+" فشل. آخر صنف: "+name);
-    }catch(e){
-     failed.push(name+" ("+(e.code||e.message)+")");
-     notify("تعذر حفظ "+name+": "+(e.code||e.message)+"؛ سأواصل باقي الأصناف.");
-    }
+    batch.set(doc(db,"products",id),{name,price,category,description:"",image:"",visible:true},{merge:true});
+    count++;
    }
   }
-  const after=await getDocsFromServer(collection(db,"products"));
-  items=after.docs.map(d=>({id:d.id,...d.data()}));render();
-  notify("نتيجة الاستيراد: "+added+" أضيف، "+skipped+" موجود مسبقًا، "+failed.length+" فشل. الخادم يحتوي "+after.size+" صنف. "+(failed.length?"الأخطاء: "+failed.join("، "):"اكتمل دون أخطاء."));
- }catch(e){notify("تعذر فحص قاعدة البيانات: "+(e.code||e.message))}
- finally{btn.disabled=false}
+  notify("جارٍ إرسال "+count+" صنف إلى Firebase...");
+  await batch.commit();
+  notify("تم تأكيد حفظ "+count+" صنف في Firebase. افتح صفحة المنيو للتحقق.");
+ }catch(e){
+  notify("فشل الاستيراد ("+(e.code||"خطأ")+"): "+e.message+". تحقق من قواعد الأمان والاتصال.");
+  console.error("Import error",e);
+ }finally{btn.disabled=false}
 };
 let items=[],editing=null,unsubscribe=null;
 const notify=t=>$("msg").textContent=t;
