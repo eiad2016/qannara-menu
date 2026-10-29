@@ -137,10 +137,10 @@ if(user)notify("هذا الحساب غير مصرح له بإدارة المني
 return;
 }
 $("userInfo").textContent="مرحبًا، "+user.email;
-unsubscribe=onSnapshot(collection(db,"products"),snap=>{
+unsubscribe=onSnapshot(collection(db,"products"),{includeMetadataChanges:true},snap=>{
 items=snap.docs.map(d=>({id:d.id,...d.data()}));
 render();
-notify("الأصناف المستلمة: "+snap.size+" | المصدر: "+(snap.metadata.fromCache?"ذاكرة مؤقتة":"الخادم")+" | المشروع: "+app.options.projectId);
+notify("الأصناف المستلمة: "+snap.size+" | المصدر: "+(snap.metadata.fromCache?"ذاكرة مؤقتة (غير مؤكدة)":"الخادم (مؤكد)")+" | كتابات معلقة: "+(snap.metadata.hasPendingWrites?"نعم":"لا")+" | المشروع: "+app.options.projectId);
 },e=>notify("تعذر قراءة الأصناف: "+e.message));
 });
 
