@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>قنّارة | لوحة التحكم</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#faf7f1;color:#302418;font-family:Tahoma,Arial}
+header{background:#40291c;color:white;padding:19px;text-align:center}
+h1{margin:0;font-size:23px}
+main{max-width:800px;margin:auto;padding:15px}
+section,.item{background:white;border-radius:15px;padding:16px;margin:13px 0;box-shadow:0 2px 12px #0001}
+input,select,textarea{width:100%;padding:13px;margin:7px 0 12px;border:1px solid #ddd;border-radius:9px;font:inherit}
+button{border:0;border-radius:9px;padding:12px 17px;background:#d97706;color:white;font-weight:bold;cursor:pointer;margin:4px}
+button:disabled{opacity:.5}
+.secondary{background:#66564a}
+.danger{background:#b91c1c}
+.hidden{display:none}
+.item{display:flex;gap:12px;align-items:center}
+.item img{width:100px;height:95px;object-fit:cover;border-radius:10px}
+.details{flex:1;min-width:0}
+small{color:#777}
+#msg{padding:10px;color:#9a3412}
+</style>
+</head>
+<body>
+<header><h1>🍽️ قنّارة | لوحة الإدارة</h1></header>
+<main>
+<section id="login">
+<h3>دخول المدير</h3>
+<button id="signIn">الدخول بحساب Google</button>
+</section>
+
+<div id="panel" class="hidden">
+<section>
+<p id="userInfo"></p>
+<button id="signOut" class="secondary">تسجيل الخروج</button>
+</section>
+
+<section>
+<h3 id="formTitle">إضافة صنف</h3>
+<form id="productForm">
+<input id="name" placeholder="اسم الصنف" required>
+<select id="category">
+<option value="main">الأطباق الرئيسية</option>
+<option value="side">الأطباق الجانبية</option>
+<option value="app">المقبلات</option>
+<option value="drink">المشروبات</option>
+</select>
+<input id="price" type="number" min="0" step="0.01" placeholder="السعر بالريال" required>
+<textarea id="description" placeholder="وصف الصنف (اختياري)"></textarea>
+<input id="image" type="url" placeholder="رابط صورة الصنف (اختياري)">
+<label><input id="visible" type="checkbox" checked style="width:auto"> متوفر في المنيو</label>
+<p><button type="submit">حفظ الصنف</button>
+<button type="button" id="cancel" class="secondary">إلغاء التعديل</button></p>
+</form>
+</section>
+
+<section>
+<h3>إدارة الأصناف</h3>
+<input id="search" placeholder="ابحث عن صنف">
+<div id="products"></div>
+</section>
+</div>
+<p id="msg"></p>
+</main>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import {getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+const config={
+apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",
+authDomain:"qannara-menu.firebaseapp.com",
+projectId:"qannara-menu",
+storageBucket:"qannara-menu.firebasestorage.app",
+messagingSenderId:"655860571721",
+appId:"1:655860571721:web:cb1841f875b5bb58b62998"
+};
+
+const app=initializeApp(config);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const provider=new GoogleAuthProvider();
+const adminEmail="eiadswdan@gmail.com";
+const $=id=>document.getElementById(id);
+let items=[],editing=null,unsubscribe=null;
+const notify=t=>$("msg").textContent=t;
+
+$("signIn").onclick=async()=>{
+try{
+await signInWithPopup(auth,provider);
+}catch(e){
+if(e.code==="auth/popup-blocked"){
+await signInWithRedirect(auth,provider);
+}else notify(e.message);
+}
+};
+$("signOut").onclick=()=>signOut(auth);
+
+onAuthStateChanged(auth,user=>{
+if(unsubscribe){unsubscribe();unsubscribe=null}
+const allowed=user&&user.email===adminEmail&&user.emailVerified&&user.providerData.some(p=>p.providerId==="google.com");
+$("login").classList.toggle("hidden",!!allowed);
+$("panel").classList.toggle("hidden",!allowed);
+if(!allowed){
+if(user)notify("هذا الحساب غير مصرح له بإدارة المنيو.");
+return;
+}
+$("userInfo").textContent="مرحبًا، "+user.email;
+unsubscribe=onSnapshot(collection(db,"products"),snap=>{
+items=snap.docs.map(d=>({id:d.id,...d.data()}));
+render();
+},e=>notify("تعذر قراءة الأصناف: "+e.message));
+});
+
+function reset(){
+editing=null;
+$("productForm").reset();
+$("visible").checked=true;
+$("formTitle").textContent="إضافة صنف";
+}
+$("cancel").onclick=reset;
+
+$("productForm").onsubmit=async e=>{
+e.preventDefault();
+const data={
+name:$("name").value.trim(),
+category:$("category").value,
+price:Number($("price").value),
+description:$("description").value.trim(),
+image:$("image").value.trim(),
+visible:$("visible").checked
+};
+if(!data.name||!Number.isFinite(data.price)||data.price<0)return;
+try{
+if(editing)await updateDoc(doc(db,"products",editing),data);
+else await addDoc(collection(db,"products"),data);
+reset();
+notify("تم حفظ الصنف بنجاح");
+}catch(err){notify("فشل الحفظ: "+err.message)}
+};
+
+$("search").oninput=render;
+function render(){
+const container=$("products");
+container.replaceChildren();
+const q=$("search").value.trim().toLowerCase();
+items.filter(p=>(p.name||"").toLowerCase().includes(q)).forEach(p=>{
+const card=document.createElement("div");
+card.className="item";
+if(p.image){
+const img=document.createElement("img");
+img.src=p.image;
+img.alt=p.name||"صنف";
+img.onerror=()=>img.remove();
+card.append(img);
+}
+const details=document.createElement("div");
+details.className="details";
+const title=document.createElement("strong");
+title.textContent=p.name||"بدون اسم";
+const info=document.createElement("p");
+info.textContent=`${p.price} ريال — ${p.visible===false?"مخفي":"ظاهر"}`;
+details.append(title,info);
+const edit=document.createElement("button");
+edit.textContent="تعديل";
+edit.onclick=()=>{
+editing=p.id;
+$("name").value=p.name||"";
+$("category").value=p.category||"main";
+$("price").value=p.price??0;
+$("description").value=p.description||"";
+$("image").value=p.image||"";
+$("visible").checked=p.visible!==false;
+$("formTitle").textContent="تعديل: "+p.name;
+window.scrollTo({top:0,behavior:"smooth"});
+};
+const del=document.createElement("button");
+del.textContent="حذف";
+del.className="danger";
+del.onclick=async()=>{
+if(confirm("حذف الصنف نهائيًا؟")){
+try{await deleteDoc(doc(db,"products",p.id))}
+catch(e){notify(e.message)}
+}
+};
+details.append(edit,del);
+card.append(details);
+container.append(card);
+});
+}
+</script>
+</body>
+</html>
