@@ -380,7 +380,7 @@ function renderProducts(){
 
     const top=document.createElement("div");
     top.className="product-top";
-    if(p.image && /^https:\/\//i.test(p.image)){
+    if(p.image && (/^https:\/\//i.test(p.image) || /^data:image\/(?:jpeg|png|webp|gif);base64,/i.test(p.image))){
       const img=document.createElement("img");img.src=p.image;img.alt=p.name;img.loading="lazy";
       img.onerror=()=>{top.replaceChildren(document.createTextNode(emojis[p.category]||"🍽️"))};
       top.append(img);
