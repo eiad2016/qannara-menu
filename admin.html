@@ -86,7 +86,7 @@ appId:"1:655860571721:web:cb1841f875b5bb58b62998"
 
 const app=initializeApp(config);
 const auth=getAuth(app);
-const db=initializeFirestore(app,{experimentalForceLongPolling:true});
+const db=initializeFirestore(app,{experimentalForceLongPolling:true},"default");
 const provider=new GoogleAuthProvider();
 const adminEmail="eiadswdan@gmail.com";
 const $=id=>document.getElementById(id);
