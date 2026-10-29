@@ -105,6 +105,7 @@ header:after{
   justify-content:center;
   font-size:42px;
 }
+.product-top:has(img){height:210px}.product-top img{width:100%;height:100%;object-fit:cover;display:block}
 .product-body{padding:15px;display:flex;flex:1;flex-direction:column;gap:12px}
 .product h3{margin:0;font-size:16px}
 .product .price{color:#a94a07;font-size:19px;font-weight:900}
@@ -183,6 +184,7 @@ footer{text-align:center;padding:28px;color:#886e55;font-size:13px}
 @media(max-width:700px){
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .product-top{height:80px;font-size:34px}
+  .product-top:has(img){height:165px}
   .product-body{padding:11px}
   .product h3{font-size:14px}
   .product .price{font-size:16px}
@@ -332,7 +334,7 @@ const emojis = {
   "الحلا":"🍮"
 };
 
-const products = [];
+let products = [];
 Object.entries(categories).forEach(([category,items])=>{
   items.forEach(([name,price],index)=>{
     products.push({
@@ -342,6 +344,11 @@ Object.entries(categories).forEach(([category,items])=>{
   });
 });
 
+function syncCategories(){
+  Object.keys(categories).forEach(k=>delete categories[k]);
+  products.forEach(p=>{(categories[p.category]??=[]).push([p.name,p.price])});
+  if(!categories[selectedCategory])selectedCategory=Object.keys(categories)[0]||"";
+}
 const $ = id=>document.getElementById(id);
 const money = n=>n+" ريال";
 const cart = {};
@@ -371,7 +378,11 @@ function renderProducts(){
 
     const top=document.createElement("div");
     top.className="product-top";
-    top.textContent=emojis[p.category]||"🍽️";
+    if(p.image && /^https:\/\//i.test(p.image)){
+      const img=document.createElement("img");img.src=p.image;img.alt=p.name;img.loading="lazy";
+      img.onerror=()=>{top.replaceChildren(document.createTextNode(emojis[p.category]||"🍽️"))};
+      top.append(img);
+    } else top.textContent=emojis[p.category]||"🍽️";
 
     const body=document.createElement("div");
     body.className="product-body";
@@ -418,7 +429,7 @@ function changeQuantity(id,amount){
 function renderCart(){
   const container=$("cartItems");
   container.innerHTML="";
-  const entries=Object.entries(cart);
+  const entries=Object.entries(cart).filter(([id])=>products.some(p=>p.id===id));
 
   if(!entries.length){
     const empty=document.createElement("div");
@@ -541,6 +552,16 @@ $("checkout").onclick=()=>{
 renderTabs();
 renderProducts();
 renderCart();
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {getFirestore,collection,onSnapshot} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",authDomain:"qannara-menu.firebaseapp.com",projectId:"qannara-menu",appId:"1:655860571721:web:cb1841f875b5bb58b62998"});
+onSnapshot(collection(getFirestore(app),"products"),snap=>{
+ if(snap.empty)return;
+ products=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.visible!==false);
+ syncCategories();renderTabs();renderProducts();renderCart();
+},e=>console.warn("تعذر تحديث المنيو",e));
 </script>
 </body>
 </html>
