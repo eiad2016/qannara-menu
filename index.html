@@ -562,7 +562,7 @@ import {initializeFirestore,collection,onSnapshot} from "https://www.gstatic.com
 const app=initializeApp({apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",authDomain:"qannara-menu.firebaseapp.com",projectId:"qannara-menu",appId:"1:655860571721:web:cb1841f875b5bb58b62998"});
 const status=document.getElementById("menuStatus");
 const watchdog=setTimeout(()=>{if(status.textContent.includes("تحميل"))status.textContent="الاتصال بقاعدة البيانات يستغرق وقتًا أطول من المتوقع. جارٍ إعادة المحاولة تلقائيًا.";},15000);
-const db=initializeFirestore(app,{experimentalForceLongPolling:true},"default");
+const db=initializeFirestore(app,{experimentalForceLongPolling:true});
 onSnapshot(collection(db,"products"),snap=>{
  clearTimeout(watchdog);
  products=snap.docs.map(d=>({id:d.id,...d.data()}))
