@@ -570,7 +570,7 @@ onSnapshot(collection(getFirestore(app),"products"),snap=>{
  syncCategories();
  for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id];}
  renderTabs();renderProducts();renderCart();
- status.textContent=products.length?"القائمة محدثة مباشرة من المطعم ("+products.length+" صنف)":"لا توجد أصناف منشورة حاليًا في قاعدة البيانات.";
+ status.textContent=products.length?"القائمة محدثة مباشرة من المطعم ("+products.length+" صنف)":("لا توجد أصناف قابلة للعرض (عدد السجلات المستلمة: "+snap.size+"، المخفية: "+snap.docs.filter(d=>d.data().visible===false).length+").");
 },e=>{
  clearTimeout(watchdog);
  products=[];
