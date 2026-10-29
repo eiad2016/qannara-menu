@@ -44,10 +44,11 @@ small{color:#777}
 <form id="productForm">
 <input id="name" placeholder="اسم الصنف" required>
 <select id="category">
-<option value="main">الأطباق الرئيسية</option>
-<option value="side">الأطباق الجانبية</option>
-<option value="app">المقبلات</option>
-<option value="drink">المشروبات</option>
+<option value="اللحوم">اللحوم</option>
+<option value="الدجاج">الدجاج</option>
+<option value="الإيدامات">الإيدامات</option>
+<option value="السلطات والمشروبات">السلطات والمشروبات</option>
+<option value="الحلا">الحلا</option>
 </select>
 <input id="price" type="number" min="0" step="0.01" placeholder="السعر بالريال" required>
 <textarea id="description" placeholder="وصف الصنف (اختياري)"></textarea>
@@ -60,6 +61,8 @@ small{color:#777}
 
 <section>
 <h3>إدارة الأصناف</h3>
+<button id="importOriginal" type="button" class="secondary">استيراد أصناف المنيو الحالي (مرة واحدة)</button>
+<p><small>ابدأ باستيراد الأصناف الحالية حتى تتمكن من تعديلها وإضافة صورها. لا يستبدل الأصناف الموجودة.</small></p>
 <input id="search" placeholder="ابحث عن صنف">
 <div id="products"></div>
 </section>
@@ -70,7 +73,7 @@ small{color:#777}
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import {getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import {getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,setDoc} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 const config={
 apiKey:"AIzaSyBHQMWeLweCjaYViNLD3VJV6wkE33YaRUc",
@@ -87,6 +90,24 @@ const db=getFirestore(app);
 const provider=new GoogleAuthProvider();
 const adminEmail="eiadswdan@gmail.com";
 const $=id=>document.getElementById(id);
+const originals={"اللحوم":[["حميس حاشي",60],["حاشي مضغوط",50]],"الدجاج":[["حبة شواية",44],["نصف حبة شواية",22],["حبة مندي",44],["نصف مندي",22],["حبة مظبي",44],["نصف حبة مظبي",22],["حبة مدفون",44],["نصف مدفون",22],["نفر رز حبة حائلي",10]],"الإيدامات":[["ملوخية",8],["بامية",8],["مشكل خضار",8],["جريش",8],["قرصان",8]],"السلطات والمشروبات":[["سلطة خضراء",3],["طحينة",3],["شطة",3],["بيبسي",3]],"الحلا":[["كنافة",8]]};
+$("importOriginal").onclick=async()=>{
+ if(!confirm("استيراد الأصناف الحالية دون استبدال التعديلات الموجودة؟"))return;
+ $("importOriginal").disabled=true;
+ try{
+ let added=0;
+ for(const [category,entries] of Object.entries(originals)){
+ for(let n=0;n<entries.length;n++){
+ const [name,price]=entries[n],id=category+"-"+n;
+ if(items.some(p=>p.id===id||p.name===name&&p.category===category))continue;
+ await setDoc(doc(db,"products",id),{name,price,category,description:"",image:"",visible:true});
+ added++;
+ }
+ }
+ notify("تم استيراد "+added+" صنف. يمكنك الآن تعديل الأسعار والصور.");
+ }catch(e){notify("فشل الاستيراد: "+e.message)}
+ finally{$("importOriginal").disabled=false}
+};
 let items=[],editing=null,unsubscribe=null;
 const notify=t=>$("msg").textContent=t;
 
@@ -171,7 +192,7 @@ edit.textContent="تعديل";
 edit.onclick=()=>{
 editing=p.id;
 $("name").value=p.name||"";
-$("category").value=p.category||"main";
+$("category").value=p.category||"اللحوم";
 $("price").value=p.price??0;
 $("description").value=p.description||"";
 $("image").value=p.image||"";
