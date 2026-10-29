@@ -568,11 +568,11 @@ onSnapshot(collection(getFirestore(app),"products"),snap=>{
  syncCategories();
  for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id];}
  renderTabs();renderProducts();renderCart();
- status.textContent=products.length?"القائمة محدثة مباشرة من المطعم":"لا توجد أصناف متاحة حاليًا.";
+ status.textContent=products.length?"القائمة محدثة مباشرة من المطعم ("+products.length+" صنف)":"لا توجد أصناف منشورة حاليًا في قاعدة البيانات.";
 },e=>{
  products=[];
  syncCategories();renderTabs();renderProducts();renderCart();
- status.textContent="تعذر تحميل القائمة من قاعدة البيانات. يرجى إعادة المحاولة لاحقًا.";
+ status.textContent="تعذر تحميل القائمة من قاعدة البيانات ("+(e.code||"خطأ اتصال")+"). حاول تحديث الصفحة أو التواصل مع المطعم.";
  console.error("Firestore menu error",e);
 });
 </script>
